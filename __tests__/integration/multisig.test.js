@@ -274,10 +274,17 @@ describe('send tx (HTR)', () => {
     expect(sig3).toBeTruthy();
 
     // try to send
+    const requestBody = { txHex, signatures: [sig1, sig2, sig3] };
     response = await TestUtils.request
       .post('/wallet/tx-proposal/sign-and-push')
-      .send({ txHex, signatures: [sig1, sig2, sig3] })
+      .send(requestBody)
       .set({ 'x-wallet-id': wallet1.walletId });
+
+    TestUtils.log('transaction minimum signatures', {
+      requestBody,
+      responseBody: response.body,
+      responseStatus: response.status
+    });
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -313,10 +320,17 @@ describe('send tx (HTR)', () => {
     expect(sig5).toBeTruthy();
 
     // try to send
+    const requestBody = { txHex, signatures: [sig1, sig2, sig3, sig4, sig5] };
     response = await TestUtils.request
       .post('/wallet/tx-proposal/sign-and-push')
-      .send({ txHex, signatures: [sig1, sig2, sig3, sig4, sig5] })
+      .send(requestBody)
       .set({ 'x-wallet-id': wallet1.walletId });
+
+    TestUtils.log('transaction maximum signatures', {
+      requestBody,
+      responseBody: response.body,
+      responseStatus: response.status
+    });
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
