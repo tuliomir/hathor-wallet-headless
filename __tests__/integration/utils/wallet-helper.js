@@ -128,7 +128,6 @@ export class WalletHelper {
    * performance-wise.
    * @param {WalletHelper[]} walletsArr Array of WalletHelpers
    * @param [options]
-   * @param {boolean} [options.serial] Start one wallet at a time
    * @returns {Promise<void>}
    */
   static async startMultipleWalletsForTest(walletsArr, options = {}) {
@@ -158,38 +157,32 @@ export class WalletHelper {
     // Start of the requests
     startBenchmark.requestsStart = Date.now().valueOf();
 
-    if (options.serial || walletsArr.length > 2) {
-      // If we need to initialize too many wallets at once, it's better to do it serially
-      for (const wallet of walletsArr) {
-        const walletBenchmark = {};
-        walletBenchmark.requestStart = Date.now().valueOf();
-        await TestUtils.startWallet(wallet.walletData, {
-          waitWalletReady: true
-        });
-        walletBenchmark.requestEnd = Date.now().valueOf();
-        walletsPendingReady[wallet.walletId] = wallet;
-        walletBenchmark.diffRequest = walletBenchmark.requestEnd
-          - walletBenchmark.requestStart;
-        startBenchmark.wallets[wallet.walletId] = walletBenchmark;
-      }
-    } else {
-      // Requests the start of all the wallets in quick succession - parallel mode
-      const startPromisesArray = [];
-      for (const wallet of walletsArr) {
-        const promise = TestUtils.startWallet(wallet.walletData);
-        walletsPendingReady[wallet.walletId] = wallet;
-        const walletBenchmark = {};
-        walletBenchmark.requestStart = Date.now().valueOf();
-        startBenchmark.wallets[wallet.walletId] = walletBenchmark;
-        startPromisesArray.push(promise);
-      }
-      await Promise.all(startPromisesArray);
+    // To increase test stability, we start each wallet individually
+    for (const wallet of walletsArr) {
+      const walletBenchmark = {};
+      walletBenchmark.requestStart = Date.now().valueOf();
+      await TestUtils.startWallet(wallet.walletData, {
+        waitWalletReady: true
+      });
+      walletBenchmark.requestEnd = Date.now().valueOf();
+      walletsPendingReady[wallet.walletId] = wallet;
+      walletBenchmark.diffRequest = walletBenchmark.requestEnd
+        - walletBenchmark.requestStart;
+      startBenchmark.wallets[wallet.walletId] = walletBenchmark;
     }
 
     startBenchmark.requestsEnd = Date.now().valueOf();
     startBenchmark.requestsDiff = startBenchmark.requestsEnd - startBenchmark.requestsStart;
 
-    // Enters the loop checking each wallet for its status
+    await TestUtils.pauseForWsUpdate();
+
+    /*
+     * Enters the loop checking each wallet for its status
+     * This delay was already done on the wallet init above, but sometimes it still gives false
+     * positives on requesting the wallet status.
+     *
+     * We add another delay here to increase the probability of the wallets starting correctly.
+     */
     const timestampTimeout = startBenchmark.requestsEnd + testConfig.walletStartTimeout;
     while (true) {
       const pendingWalletIds = Object.keys(walletsPendingReady);
@@ -227,9 +220,7 @@ export class WalletHelper {
 
         const walletBenchmark = startBenchmark.wallets[walletId];
         walletBenchmark.isReady = timestampReady;
-        walletBenchmark.diffReady = walletBenchmark.requestEnd
-          ? timestampReady - walletBenchmark.requestEnd // Serial
-          : timestampReady - startBenchmark.requestsEnd; // Parallel
+        walletBenchmark.diffReady = timestampReady - walletBenchmark.requestEnd;
 
         const addresses = await TestUtils.getSomeAddresses(walletId);
         await loggers.test.informWalletAddresses(walletId, addresses);
