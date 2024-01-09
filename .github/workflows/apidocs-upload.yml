@@ -22,7 +22,7 @@ jobs:
         run: |
   
           if [[ "${{ github.ref }}" = refs/tags/* ]]; then
-            version="${github.ref#refs/tags/}"
+            version="${GITHUB_REF#refs/tags/}"
             echo "version=$version"
 
             # Pattern that accepts "v1.0.0" , "v2.4.6". 
