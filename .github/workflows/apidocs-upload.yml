@@ -41,7 +41,7 @@ jobs:
           echo $result
           echo "version_status_output=$result" >> $GITHUB_OUTPUT
 
-  # Initiate upload only if the version is valid
+  # Initiate upload only if the version is valid.
   upload-apidocs:
     runs-on: ubuntu-22.04
     needs: check-version
