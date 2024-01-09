@@ -1,4 +1,4 @@
-name: apidocs
+name: apidocs-upload
 
 on:
   push:
@@ -46,7 +46,11 @@ jobs:
     needs: check-version
     env:
       release_status: ${{ needs.test_version.outputs.release_status_output }}
-    if: ${{ env.release_status == 'isRelease' || env.release_status == 'isReleaseCandidate' }}
+    if: >-
+      ${{ 
+          needs.check-version.outputs.release_status_output == 'isRelease' || 
+          needs.check-version.outputs.release_status_output == 'isReleaseCandidate' 
+      }}
     timeout-minutes: 10
 
     strategy:
